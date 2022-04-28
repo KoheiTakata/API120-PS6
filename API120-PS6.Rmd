@@ -101,6 +101,23 @@ dev.off()
 ```
 
 ```{r SVAR, include=TRUE}
+## Run a Blanchard - Quah type SVAR
+var.2var.BQ <- BQ(var.2var)
+var.2var.BQirfdy  <- irf (var.2var.BQ, impulse = c("GDP"),      response = c("GDP","Deflator"), n.ahead = 32)
+var.2var.BQirfinf <- irf (var.2var.BQ, impulse = c("Deflator"), response = c("GDP","Deflator"), n.ahead = 32)
+# Plot IRFs for the output shock
+plot(var.2var.BQirfdy)
+dev.copy(png, "svar_output.png")
+dev.off()
+# Plot IRFs for the demand shock
+plot(var.2var.BQirfinf)
+dev.copy(png, "svar_demand.png")
+dev.off()
 
+#The estimated contemporaneous impact matrix
+var.2var.BQ$B
+
+#The estimated long-run impact matrix
+var.2var.BQ$LRIM
 ```
 
