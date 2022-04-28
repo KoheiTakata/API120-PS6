@@ -1,0 +1,102 @@
+---
+title: "API120-PS6"
+author: "Kohei Takata"
+date: "4/28/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+rm(list =ls())
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+# download URL
+https://data.imf.org/?sk=4C514D48-B6BA-49ED-8AB9-52B0C1A0179B&sId=1390030341854
+
+```{r import packages, include=TRUE}
+## install packages if necessary
+
+#install.packages("ggplot2")
+#install.packages("tidyverse")
+#install.packages("readxl")
+#install.packages("zoo")
+#install.packages ("mFilter")
+#install.packages("vars")
+#install.packages("tsseries")
+#install.packages("tsbox")
+
+## import packages 
+library(tidyverse)
+library(readxl)
+library(zoo)
+library(mFilter)
+library(vars)
+library(tseries)
+library(tsbox)
+
+```
+
+
+```{r import data, include=TRUE}
+## import data
+path      <- "PS6_Japan.xlsx"
+data_ori  <- readxl::read_excel(path, skip = 2)
+
+colnames_ori       <- colnames(data_ori) # save original col names
+
+colnames(data_ori) <- c("YQ", "GDP", "Deflator")
+
+```
+
+```{r data transform, include=TRUE}
+
+data <- data_ori %>% 
+        mutate(YQ =as.Date(ts(YQ, start = as.yearqtr('1994-1'), frequency = 4))) %>% # time series
+        mutate_if(is.numeric, log)  %>%                              # log transformation
+        mutate(GDP      = GDP - lag(GDP),
+               Deflator = Deflator - lag(Deflator)) %>%              # take a first difference
+        dplyr::select(GDP, Deflator) %>% 
+        drop_na()
+
+```
+
+```{r var, include=TRUE}
+adf.test(data$GDP)
+adf.test(data$Deflator)
+
+VARselect(data, lag.max = 10 , type ="const")
+
+var.2var <- VAR(data, p = 1 , type ="const")
+
+var.2var.dy <- irf(var.2var, impulse = c("GDP") , response = c("GDP","Deflator"), ORTHO = FALSE, n.ahead = 32)
+
+var.2var.inf <- irf(var.2var, impulse = c("Deflator"), response = c("GDP","Deflator") , ORTHO = FALSE, n.ahead = 32)
+
+
+```
+
+```{r IRF_GDP, include=TRUE}
+plot(var.2var.dy, main =" VAR Impulse Response from GDP")
+dev.copy(png, "vardy.png")
+dev.off()
+
+
+```
+
+```{r IRF_INF, include=TRUE}
+plot(var.2var.inf, main =" VAR Impulse Response from Deflator")
+dev.copy(png, "varINF.png")
+dev.off()
+
+```
+
+```{r prediction, include=TRUE}
+## Prediction
+var.2var.prd <- predict(var.2var, n.ahead = 8 , ci = 0.95)
+plot(var.2var.prd, xlim = c(100 , 117))
+dev.copy(png, "prediction.png")
+dev.off()
+
+```
+
